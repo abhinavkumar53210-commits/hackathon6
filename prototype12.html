@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RouteGuard - Smart Supply Chain Optimization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a1e0f;
+            color: #e0e0e0;
+        }
+
+        .header {
+            background: #0d2818;
+            padding: 20px 30px;
+            border-bottom: 2px solid #2d6a4f;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 25px;
+        }
+
+        .shipment-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .shipment-card {
+            background: #0f2418;
+            border-radius: 20px;
+            padding: 20px;
+            border-left: 4px solid;
+            transition: all 0.3s;
+        }
+
+        .shipment-card.green { border-left-color: #2d6a4f; }
+        .shipment-card.yellow { border-left-color: #ffb74d; }
+        .shipment-card.red { border-left-color: #ef5350; animation: pulse-border 1s infinite; }
+
+        @keyframes pulse-border {
+            0%, 100% { border-left-color: #ef5350; }
+            50% { border-left-color: #ff8a80; }
+        }
+
+        .shipment-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .shipment-id {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .status-green { background: #2d6a4f; color: white; }
+        .status-yellow { background: #b85c00; color: white; }
+        .status-red { background: #c62828; color: white; }
+
+        .route-info {
+            margin: 12px 0;
+            padding: 10px;
+            background: #07140c;
+            border-radius: 12px;
+            font-size: 0.85rem;
+        }
+
+        .progress-bar {
+            background: #1e3a2a;
+            border-radius: 10px;
+            height: 8px;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            background: #2d6a4f;
+            border-radius: 10px;
+            height: 100%;
+            width: 0%;
+        }
+
+        .alert-box {
+            background: rgba(239, 83, 80, 0.15);
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            font-size: 0.8rem;
+            border-left: 3px solid #ef5350;
+        }
+
+        .btn-reroute {
+            background: linear-gradient(135deg, #2d6a4f, #1b4332);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .btn-reroute:hover {
+            background: linear-gradient(135deg, #40916c, #2d6a4f);
+        }
+
+        .map-preview {
+            background: #07140c;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .route-line {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+            padding: 10px;
+            background: #0f2418;
+            border-radius: 12px;
+        }
+
+        .disruption-tag {
+            background: #ef5350;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-box {
+            background: #0f2418;
+            padding: 15px;
+            border-radius: 16px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #74c69d;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>🚚 RouteGuard Dynamic</h2>
+        <p>Predictive disruption detection & real-time rerouting</p>
+    </div>
+    <div class="container">
+        <div class="stats-row">
+            <div class="stat-box"><div class="stat-number">1,247</div><div>Active Shipments</div></div>
+            <div class="stat-box"><div class="stat-number" id="predictedDelays">8</div><div>Predicted Delays</div></div>
+            <div class="stat-box"><div class="stat-number">92%</div><div>On-Time Performance</div></div>
+        </div>
+
+        <div class="shipment-grid" id="shipmentContainer">
+            <!-- Shipment 1 - Green / On track -->
+            <div class="shipment-card green">
+                <div class="shipment-header"><span class="shipment-id">🚛 TRK-4821</span><span class="status-badge status-green">● ON TRACK</span></div>
+                <div>📦 Medical Supplies → Chicago, IL</div>
+                <div class="route-info">📍 Current: Indianapolis, IN | ETA: 3:15 PM (on schedule)</div>
+                <div class="progress-bar"><div class="progress-fill" style="width: 65%"></div></div>
+                <div>🌤️ Weather: Clear | 🚦 Traffic: Normal</div>
+            </div>
+
+            <!-- Shipment 2 - Yellow / Potential disruption -->
+            <div class="shipment-card yellow" id="shipment2">
+                <div class="shipment-header"><span class="shipment-id">🚛 TRK-6734</span><span class="status-badge status-yellow">⚠️ POTENTIAL DELAY</span></div>
+                <div>🍎 Perishable Goods → Denver, CO</div>
+                <div class="route-info">📍 Current: Lincoln, NE | Original ETA: 7:30 PM</div>
+                <div class="alert-box">⚠️ ALERT: Flash flood warning on I-80 near Grand Island. Predicted delay: 2.5 hours.</div>
+                <div class="progress-bar"><div class="progress-fill" style="width: 45%"></div></div>
+                <button class="btn-reroute" onclick="rerouteShipment('TRK-6734', 'I-76 alternate')">🔄 RECOMMEND REROUTE: I-76 via Fort Morgan (saves 1.8hr)</button>
+            </div>
+
+            <!-- Shipment 3 - Red / Active disruption -->
+            <div class="shipment-card red" id="shipment3">
+                <div class="shipment-header"><span class="shipment-id">🚛 TRK-2190</span><span class="status-badge status-red">🔴 ACTIVE DISRUPTION</span></div>
+                <div>⚡ Electronics → Seattle, WA</div>
+                <div class="route-info">📍 Current: Butte, MT | Original ETA: 2:00 PM (tomorrow)</div>
+                <div class="alert-box">🚧 CRITICAL: Mountain pass closure (avalanche). I-90 closed at Lookout Pass. Delay: 6+ hours.</div>
+                <button class="btn-reroute" onclick="rerouteShipment('TRK-2190', 'US-12 via Lewiston')">🔄 FORCED REROUTE: US-12 (adds 45mi but avoids closure)</button>
+            </div>
+
+            <!-- Shipment 4 - Additional trackable -->
+            <div class="shipment-card green">
+                <div class="shipment-header"><span class="shipment-id">🚛 TRK-9056</span><span class="status-badge status-green">● ON TRACK</span></div>
+                <div>📦 Retail Inventory → Dallas, TX</div>
+                <div class="route-info">📍 Current: Tulsa, OK | ETA: 5:45 PM</div>
+                <div class="progress-bar"><div class="progress-fill" style="width: 70%"></div></div>
+            </div>
+        </div>
+
+        <div class="map-preview">
+            <h4>🗺️ Live Network Intelligence</h4>
+            <div class="route-line">
+                <span>🔴 I-90 (Lookout Pass): CLOSED - Avalanche</span>
+                <span class="disruption-tag">Active</span>
+            </div>
+            <div class="route-line">
+                <span>🟡 I-80 (Grand Island): Flood warning - reduced speed</span>
+                <span class="disruption-tag">Monitoring</span>
+            </div>
+            <div class="route-line">
+                <span>🟢 I-70 (Kansas): All clear</span>
+                <span class="disruption-tag">Normal</span>
+            </div>
+            <div class="route-line">
+                <span>🟡 Port of Houston: Labor shortage - 2hr loading delays</span>
+                <span class="disruption-tag">Cascade Risk</span>
+            </div>
+            <div style="margin-top: 15px; font-size: 0.7rem; color: #74c69d;">
+                ⚡ Dynamic reroute executed for 3 shipments in last hour | Estimated time saved: 4.2 hours
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let delayCount = 8;
+        
+        function rerouteShipment(shipmentId, route) {
+            alert(`✅ ${shipmentId}: Reroute to ${route} executed. Updated ETA recalculated.`);
+            
+            if (shipmentId === 'TRK-6734') {
+                const card = document.getElementById('shipment2');
+                card.classList.remove('yellow');
+                card.classList.add('green');
+                card.querySelector('.status-badge').className = 'status-badge status-green';
+                card.querySelector('.status-badge').innerHTML = '● REROUTED - ON TRACK';
+                card.querySelector('.alert-box')?.remove();
+                delayCount--;
+                document.getElementById('predictedDelays').innerText = delayCount;
+            }
+            
+            if (shipmentId === 'TRK-2190') {
+                const card = document.getElementById('shipment3');
+                card.classList.remove('red');
+                card.classList.add('yellow');
+                card.querySelector('.status-badge').className = 'status-badge status-yellow';
+                card.querySelector('.status-badge').innerHTML = '⚠️ REROUTED - MONITORING';
+                const alertDiv = card.querySelector('.alert-box');
+                if (alertDiv) alertDiv.innerHTML = '🔄 Reroute active via US-12. Clearing mountain pass. Revised ETA: +1.5hr';
+                delayCount--;
+                document.getElementById('predictedDelays').innerText = delayCount;
+            }
+        }
+
+        // Simulate new disruption detection
+        setInterval(() => {
+            const random = Math.random();
+            if (random > 0.7 && delayCount < 15) {
+                delayCount++;
+                document.getElementById('predictedDelays').innerText = delayCount;
+                const alertBox = document.createElement('div');
+                alertBox.className = 'alert-box';
+                alertBox.innerHTML = '⚠️ NEW: Congestion detected on I-55 near St. Louis. Potential 45min delay for southbound shipments.';
+                document.querySelector('.map-preview').insertBefore(alertBox, document.querySelector('.map-preview').firstChild);
+            }
+        }, 15000);
+    </script>
+</body>
+</html>
